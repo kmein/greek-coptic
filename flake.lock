@@ -1,5 +1,17 @@
 {
   "nodes": {
+    "ddglc-attestations": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-SaByABdDNaS4nA6SJqNPFbY3lRBjJSFDTxh7iSxXrg8=",
+        "type": "file",
+        "url": "https://c.krebsco.de/ddglc-attestations.csv"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://c.krebsco.de/ddglc-attestations.csv"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1713454724,
@@ -17,6 +29,7 @@
     },
     "root": {
       "inputs": {
+        "ddglc-attestations": "ddglc-attestations",
         "nixpkgs": "nixpkgs"
       }
     }

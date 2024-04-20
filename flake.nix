@@ -1,9 +1,14 @@
 {
   description = "Analysing the Coptic spellings of Greek loan words";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs";
+    ddglc-attestations.url = "https://c.krebsco.de/ddglc-attestations.csv";
 
-  outputs = { self, nixpkgs }:
+    ddglc-attestations.flake = false;
+  };
+
+  outputs = { self, nixpkgs, ddglc-attestations }:
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
@@ -22,6 +27,7 @@
         type = "app";
         program = toString (pkgs.writers.writeDash "jupyter" ''
           PATH=${nixpkgs.lib.makeBinPath [pythonInstallation]} \
+          ATTESTATIONS_CSV=${ddglc-attestations} \
           jupyter notebook
         '');
       };
@@ -30,6 +36,7 @@
     packages.${system} = {
       assets = pkgs.runCommand "assets" {} ''
         PATH=$PATH:${nixpkgs.lib.makeBinPath [pythonInstallation]} \
+        ATTESTATIONS_CSV=${ddglc-attestations} \
         papermill ${./greek-coptic.ipynb} /dev/null
 
         for figure in assets/*.svg; do
