@@ -20,6 +20,7 @@
       p.seaborn
       p.tabulate
       p.papermill
+      self.packages.${system}.matplotlib-venn
     ]);
   in {
     apps.${system} = {
@@ -34,6 +35,7 @@
     };
 
     packages.${system} = {
+      matplotlib-venn = pkgs.python3Packages.callPackage ./matplotlib-venn.nix {};
       assets = pkgs.runCommand "assets" {} ''
         PATH=$PATH:${nixpkgs.lib.makeBinPath [pythonInstallation]} \
         ATTESTATIONS_CSV=${ddglc-attestations} \
