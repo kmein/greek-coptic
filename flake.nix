@@ -20,6 +20,7 @@
       p.seaborn
       p.tabulate
       p.papermill
+      p.networkx
       self.packages.${system}.matplotlib-venn
     ]);
   in {
