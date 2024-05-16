@@ -10,7 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Nix
-        uses: cachix/install-nix-action@v16
+        uses: cachix/install-nix-action@v20
+      - uses: cachix/cachix-action@v14
+        with:
+          name: kmein
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       - name: assets
         run: nix build $GITHUB_WORKSPACE#assets --out-link assets
       - run: zip assets.zip assets/*
