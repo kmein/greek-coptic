@@ -21,6 +21,9 @@
       p.tabulate
       p.papermill
       p.networkx
+      p.scikit-learn
+      p.plotly
+      p.scipy
       self.packages.${system}.matplotlib-venn
     ]);
   in {
