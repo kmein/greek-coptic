@@ -1,0 +1,24 @@
+name: "pre-release"
+on:
+  push:
+    branches:
+      - "master"
+jobs:
+  pre-release:
+    name: "Pre Release"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Nix
+        uses: cachix/install-nix-action@v16
+      - name: assets
+        run: nix build $GITHUB_WORKSPACE#assets --out-link assets
+      - run: zip assets.zip assets/*
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: true
+          title: "Assets release"
+          files: |
+            assets.zip
