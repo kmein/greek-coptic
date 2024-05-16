@@ -13,6 +13,16 @@
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
     lib = nixpkgs.lib;
+    zip-font = name: arguments: let
+      directory = pkgs.fetchzip arguments;
+    in
+      pkgs.runCommand name {} ''
+        mkdir -p $out/share/fonts/{truetype,opentype,woff}
+        ${pkgs.findutils}/bin/find ${directory} -name '*.ttf' -exec install '{}' $out/share/fonts/truetype \;
+        ${pkgs.findutils}/bin/find ${directory} -name '*.otf' -exec install '{}' $out/share/fonts/opentype \;
+        ${pkgs.findutils}/bin/find ${directory} -name '*.woff' -exec install '{}' $out/share/fonts/woff \;
+      '';
+
     pythonInstallation = pkgs.python3.withPackages (p: [
       p.pandas
       p.jupyter
@@ -40,6 +50,11 @@
 
     packages.${system} = {
       matplotlib-venn = pkgs.python3Packages.callPackage ./matplotlib-venn.nix {};
+      antinoou = zip-font "Antinoou" {
+        url = "https://www.evertype.com/fonts/coptic/AntinoouFont.zip";
+        sha256 = "0jwihj08n4yrshcx07dnaml2x9yws6dgyjkvg19jqbz17drbp3sw";
+        stripRoot = false;
+      };
       assets = pkgs.runCommand "assets" {} ''
         PATH=$PATH:${nixpkgs.lib.makeBinPath [pythonInstallation]} \
         ATTESTATIONS_CSV=${ddglc-attestations} \
