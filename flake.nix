@@ -60,10 +60,6 @@
         ATTESTATIONS_CSV=${ddglc-attestations} \
         papermill ${./greek-coptic.ipynb} /dev/null
 
-        for figure in assets/*.svg; do
-          ${pkgs.inkscape}/bin/inkscape -D --export-latex --export-filename="assets/$(basename "$figure" .svg).pdf" "$figure"
-        done
-
         # make table page break footer empty. original one is ugly and in english
         ${pkgs.gnused}/bin/sed -i '/endhead/,/endfoot/{//!d}' assets/table-*.tex
 
