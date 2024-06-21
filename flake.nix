@@ -3,13 +3,15 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs";
-    ddglc-attestations.url = "https://c.krebsco.de/ddglc-attestations.csv";
-
-    ddglc-attestations.flake = false;
   };
 
-  outputs = { self, nixpkgs, ddglc-attestations }:
+  outputs = { self, nixpkgs }:
   let
+    ddglc-attestations = pkgs.fetchurl {
+      url = "https://c.krebsco.de/ddglc-attestations.csv";
+      hash = "sha256-ycR59YV/9GHLy58PD2kveY+F1bnARiqTCswIN3NmjVI=";
+    };
+
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
     lib = nixpkgs.lib;
