@@ -45,6 +45,13 @@
       stripRoot = false;
     };
 
+    ifao-n-coptic = zip-font "IFAO N Coptic" {
+      url = "http://web.archive.org/web/20220405031450/https://www.ifao.egnet.net/uploads/polices/IfaoNCopte.zip";
+      hash = "sha256-9/4TxXRgFt4WdColPDGwXE/MTcgMY2UdKhr/rF2z7XQ=";
+      stripRoot = false;
+    };
+
+
     fontsConf = pkgs.makeFontsConf {
       fontDirectories = [ antinoou ];
     };
@@ -64,6 +71,7 @@
     packages.${system} = {
       matplotlib-venn = pkgs.python3Packages.callPackage ./matplotlib-venn.nix {};
       antinoou = antinoou;
+      ifao-n-coptic = ifao-n-coptic;
       assets = pkgs.runCommand "assets" {} ''
         ANTINOOU_FONT=${antinoou}/share/fonts/truetype/Antinoou.ttf \
         FONTCONFIG_FILE=${fontsConf} \
