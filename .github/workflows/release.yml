@@ -26,3 +26,4 @@ jobs:
           title: "Assets release"
           files: |
             assets.zip
+            assets/*.csv
