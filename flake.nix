@@ -56,6 +56,10 @@
       fontDirectories = [ antinoou ];
     };
   in {
+    devShells.${system}.default = pkgs.mkShell {
+      buildInputs = [pythonInstallation];
+    };
+
     apps.${system} = {
       jupyter = {
         type = "app";
@@ -63,7 +67,7 @@
           ANTINOOU_FONT=${antinoou}/share/fonts/truetype/Antinoou.ttf \
           PATH=${nixpkgs.lib.makeBinPath [pythonInstallation]} \
           ATTESTATIONS_CSV=${ddglc-attestations} \
-          jupyter notebook
+          jupyter lab
         '');
       };
     };
