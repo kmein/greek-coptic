@@ -33,7 +33,9 @@
       p.tabulate
       p.papermill
       p.networkx
+      p.statsmodels
       p.scikit-learn
+      p.umap-learn
       p.plotly
       p.scipy
       self.packages.${system}.matplotlib-venn
