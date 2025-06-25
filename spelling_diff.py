@@ -80,7 +80,7 @@ def get_required_edits(a, b):
         context_right = a[a_end:]
         if len(context_right) == 0: context_right = "#"
         if operation == "equal": continue
-        yield {"operation": operation, "input": the_input, "output": the_output, "context_left": context_left, "context_right": context_right}
+        yield {"operation": operation, "norm": the_input, "var": the_output, "context_left": context_left, "context_right": context_right}
 
 remove_null = lambda x: x.replace("∅", "") if len(x) > 1 else x
 
@@ -90,8 +90,8 @@ unzip = lambda xs: zip(*xs) if xs else ([], [])
 
 def fix_CV_or_VC(edit):
     try:
-        input_booleans, input_cv_groups = unzip(group_cv(edit["input"]))
-        output_booleans, output_cv_groups = unzip(group_cv(edit["output"]))
+        input_booleans, input_cv_groups = unzip(group_cv(edit["norm"]))
+        output_booleans, output_cv_groups = unzip(group_cv(edit["var"]))
         if input_booleans == output_booleans and len(input_booleans) > 1:
             edits = []
             position = 0
@@ -100,8 +100,8 @@ def fix_CV_or_VC(edit):
             for input_cv, output_cv in zip(input_cv_groups, output_cv_groups, strict=True):
                 position += len(input_cv)
                 edits.append({
-                    "input": "".join(input_cv),
-                    "output": "".join(output_cv),
+                    "norm": "".join(input_cv),
+                    "var": "".join(output_cv),
                     "context_left": remove_null(edit["context_left"] + context_left),
                     "context_right": remove_null(context_right[position:] + edit["context_right"])
                 })
@@ -113,124 +113,124 @@ def fix_CV_or_VC(edit):
         return [edit]
 
 def fix_insert_h(edit):
-    input_booleans, _ = unzip(group_cv(edit["input"]))
-    output_booleans, _ = unzip(group_cv(edit["output"]))
-    if edit["context_left"] == "#" and len(output_booleans) > len(input_booleans) and edit["output"].startswith("ϩ"):
+    input_booleans, _ = unzip(group_cv(edit["norm"]))
+    output_booleans, _ = unzip(group_cv(edit["var"]))
+    if edit["context_left"] == "#" and len(output_booleans) > len(input_booleans) and edit["var"].startswith("ϩ"):
         return [{
-            "input": edit["input"],
-            "output": edit["output"].removeprefix("ϩ"),
+            "norm": edit["norm"],
+            "var": edit["var"].removeprefix("ϩ"),
             "context_left": edit["context_left"],
             "context_right": edit["context_right"]
         }, {
-            "input": "∅",
-            "output": "ϩ",
+            "norm": "∅",
+            "var": "ϩ",
             "context_left": edit["context_left"],
-            "context_right": edit["input"] + edit["context_right"]
+            "context_right": edit["norm"] + edit["context_right"]
         }]
     else:
         return [edit]
 
 def fix_degemination(edit):
-    input_booleans, _ = unzip(group_cv(edit["input"]))
-    output_booleans, _ = unzip(group_cv(edit["output"]))
+    input_booleans, _ = unzip(group_cv(edit["norm"]))
+    output_booleans, _ = unzip(group_cv(edit["var"]))
     if input_booleans == output_booleans:
         return [edit]
-    if edit["output"] == "∅":
-        if edit["context_left"].endswith(edit["input"]):
-            geminate = edit["input"]
+    if edit["var"] == "∅":
+        if edit["context_left"].endswith(edit["norm"]):
+            geminate = edit["norm"]
             return [{
-                "input": geminate * 2,
-                "output": geminate,
+                "norm": geminate * 2,
+                "var": geminate,
                 "context_left": edit["context_left"].removesuffix(geminate),
                 "context_right": edit["context_right"]
             }]
-        elif edit["context_right"].startswith(edit["input"]):
-            geminate = edit["input"]
+        elif edit["context_right"].startswith(edit["norm"]):
+            geminate = edit["norm"]
             return [{
-                "input": geminate * 2,
-                "output": geminate,
+                "norm": geminate * 2,
+                "var": geminate,
                 "context_left": edit["context_left"],
                 "context_right": edit["context_right"].removeprefix(geminate)
             }]
         else:
             return [edit]
-    elif edit["context_left"].endswith(edit["input"][0]):
-        geminate = edit["input"][0]
+    elif edit["context_left"].endswith(edit["norm"][0]):
+        geminate = edit["norm"][0]
         return [{
-            "input": edit["input"].removeprefix(geminate),
-            "output": edit["output"],
+            "norm": edit["norm"].removeprefix(geminate),
+            "var": edit["var"],
             "context_left": edit["context_left"] + geminate,
             "context_right": edit["context_right"]
         }, {
-            "input": geminate * 2,
-            "output": geminate,
+            "norm": geminate * 2,
+            "var": geminate,
             "context_left": edit["context_left"].removesuffix(geminate),
-            "context_right": edit["input"].removeprefix(geminate)+ edit["context_right"],
+            "context_right": edit["norm"].removeprefix(geminate)+ edit["context_right"],
         }]
-    elif edit["context_right"].startswith(edit["input"][-1]):
-        geminate = edit["input"][-1]
+    elif edit["context_right"].startswith(edit["norm"][-1]):
+        geminate = edit["norm"][-1]
         return [{
-            "input": edit["input"].removesuffix(geminate),
-            "output": edit["output"],
+            "norm": edit["norm"].removesuffix(geminate),
+            "var": edit["var"],
             "context_left": edit["context_left"],
             "context_right": geminate + edit["context_right"]
         }, {
-            "input": geminate * 2,
-            "output": geminate,
-            "context_left": edit["input"].removesuffix(geminate),
+            "norm": geminate * 2,
+            "var": geminate,
+            "context_left": edit["norm"].removesuffix(geminate),
             "context_right": edit["context_right"].removeprefix(geminate),
         }]
     else:
         return [edit]
 
 def fix_gemination(edit):
-    input_booleans, _ = unzip(group_cv(edit["input"]))
-    output_booleans, _ = unzip(group_cv(edit["output"]))
+    input_booleans, _ = unzip(group_cv(edit["norm"]))
+    output_booleans, _ = unzip(group_cv(edit["var"]))
     if input_booleans == output_booleans:
         return [edit]
-    if edit["input"] == "∅":
-        if edit["context_left"].endswith(edit["output"]):
-            geminate = edit["output"]
+    if edit["norm"] == "∅":
+        if edit["context_left"].endswith(edit["var"]):
+            geminate = edit["var"]
             return [{
-                "input": geminate,
-                "output": geminate * 2,
+                "norm": geminate,
+                "var": geminate * 2,
                 "context_left": edit["context_left"].removesuffix(geminate),
                 "context_right": edit["context_right"]
             }]
-        elif edit["context_right"].startswith(edit["output"]):
-            geminate = edit["output"]
+        elif edit["context_right"].startswith(edit["var"]):
+            geminate = edit["var"]
             return [{
-                "input": geminate,
-                "output": geminate * 2,
+                "norm": geminate,
+                "var": geminate * 2,
                 "context_left": edit["context_left"],
                 "context_right": edit["context_right"].removeprefix(geminate)
             }]
         else:
             return [edit]
-    elif edit["context_left"].endswith(edit["output"][0]):
-        geminate = edit["output"][0]
+    elif edit["context_left"].endswith(edit["var"][0]):
+        geminate = edit["var"][0]
         return [{
-            "input": edit["input"],
-            "output": edit["output"].removeprefix(geminate),
+            "norm": edit["norm"],
+            "var": edit["var"].removeprefix(geminate),
             "context_left": edit["context_left"],
             "context_right": edit["context_right"]
         }, {
-            "input": geminate,
-            "output": geminate * 2,
+            "norm": geminate,
+            "var": geminate * 2,
             "context_left": edit["context_left"].removesuffix(geminate),
-            "context_right": edit["input"]+edit["context_right"],
+            "context_right": edit["norm"]+edit["context_right"],
         }]
-    elif edit["context_right"].startswith(edit["output"][-1]):
-        geminate = edit["output"][-1]
+    elif edit["context_right"].startswith(edit["var"][-1]):
+        geminate = edit["var"][-1]
         return [{
-            "input": edit["input"],
-            "output": edit["output"].removesuffix(geminate),
+            "norm": edit["norm"],
+            "var": edit["var"].removesuffix(geminate),
             "context_left": edit["context_left"],
             "context_right": edit["context_right"]
         }, {
-            "input": geminate,
-            "output": geminate * 2,
-            "context_left": edit["input"],
+            "norm": geminate,
+            "var": geminate * 2,
+            "context_left": edit["norm"],
             "context_right": edit["context_right"].removeprefix(geminate)
         }]
     else:
@@ -264,8 +264,8 @@ def unprotect_digraphs(string):
 
 def unprotect_edit(edit):
     return {
-        "input": unprotect_digraphs(edit["input"]),
-        "output": unprotect_digraphs(edit["output"]),
+        "norm": unprotect_digraphs(edit["norm"]),
+        "var": unprotect_digraphs(edit["var"]),
         "context_left": unprotect_digraphs(edit["context_left"]),
         "context_right": unprotect_digraphs(edit["context_right"])
     }
@@ -295,15 +295,14 @@ if __name__ == "__main__":
         .drop(columns=["dialect"]) \
         .rename(columns={"code": "dialect"})
 
-    dialects = ["B", "F", "M", "S", "L", "A"] # ordered north to south
-    df["dialect_group"] = pd.Categorical(df["dialect_group"].replace({
+    df["dialect_group"] = df["dialect_group"].replace({
         "Akhmimic Dialects": "A",
         "Lycopolitan Dialects": "L",
         "Middle Egyptian Dialects": "M",
         "Sahidic Dialects": "S",
         "Bohairic Dialects": "B",
         "Fayyumic Dialects": "F"
-    }), dialects)
+    })
 
     df["date_approximate"] = df.apply(unify_date, axis=1)
     df['century'] = (df['date_approximate'] // 100) + 1
@@ -332,8 +331,6 @@ if __name__ == "__main__":
     df["greek_lemma_original"] = df["greek_lemma"]
     df["greek_lemma"] = df["greek_lemma_original"].apply(transliterate)
 
-    df["similarity"] = df.apply(lambda row: SequenceMatcher(None, row["greek_lemma"], row["orthography_clean"]).ratio(), axis=1)
-
     df_diff = df.apply(
         lambda row: list(get_required_edits_improved(row["greek_lemma"], row["orthography_clean"])),
         axis=1
@@ -345,51 +342,51 @@ if __name__ == "__main__":
     # remove verbal endings
     df_diff = df_diff[~(
         (
-            df_diff["input"].str.endswith(("ⲱ", "ⲟⲙⲁⲓ", "ⲙⲓ"))
+            df_diff["norm"].str.endswith(("ⲱ", "ⲟⲙⲁⲓ", "ⲙⲓ"))
         ) & (
             df_diff["context_right"] == "#"
         )
     ) & ~( # remove stuff like ⲭⲟⲣⲉⲱ → ⲭⲟⲣⲉⲩⲉ
         (df_diff["context_right"] == "ⲉⲱ")
-        & (df_diff["input"] == "∅")
-        & (df_diff["output"] == "ⲉⲩ")
+        & (df_diff["norm"] == "∅")
+        & (df_diff["var"] == "ⲉⲩ")
     )]
 
     # remove nominal morphology
     df_diff = df_diff[~(
         (df_diff["context_right"] == "#")
         & (
-            (df_diff["input"].isin({"ⲥ", "ⲛ"}) & df_diff["output"].isin({"ⲛ", "ⲩ"}) & df_diff["context_left"].str.endswith("ⲟ"))
-            | ((df_diff["input"] == "ⲟⲥ") & (df_diff["output"].isin({"ⲏ", "ⲁ", "ⲱⲛ", "ⲱ", "ⲉ", "ⲟⲩ"})))
-            | ((df_diff["input"] == "ⲟⲛ") & (df_diff["output"] == "ⲁ"))
-            | ((df_diff["input"] == "ⲩⲥ") & (df_diff["output"] == "ⲏ"))
-            | ((df_diff["input"] == "ⲥ") & (df_diff["output"] == "ⲛ"))
-            | ((df_diff["input"] == "ⲛ") & (df_diff["output"] == "ⲥ"))
-            | ((df_diff["input"] == "ⲏ") & (df_diff["output"] == "ⲟⲟⲩⲉ"))
+            (df_diff["norm"].isin({"ⲥ", "ⲛ"}) & df_diff["var"].isin({"ⲛ", "ⲩ"}) & df_diff["context_left"].str.endswith("ⲟ"))
+            | ((df_diff["norm"] == "ⲟⲥ") & (df_diff["var"].isin({"ⲏ", "ⲁ", "ⲱⲛ", "ⲱ", "ⲉ", "ⲟⲩ"})))
+            | ((df_diff["norm"] == "ⲟⲛ") & (df_diff["var"] == "ⲁ"))
+            | ((df_diff["norm"] == "ⲩⲥ") & (df_diff["var"] == "ⲏ"))
+            | ((df_diff["norm"] == "ⲥ") & (df_diff["var"] == "ⲛ"))
+            | ((df_diff["norm"] == "ⲛ") & (df_diff["var"] == "ⲥ"))
+            | ((df_diff["norm"] == "ⲏ") & (df_diff["var"] == "ⲟⲟⲩⲉ"))
         )
     ) & ~(
         (df_diff["context_right"] == "ⲥ")
         & (
-            ((df_diff["input"] == "ⲟ") & (df_diff["output"] == "ⲏ"))
-            | ((df_diff["input"] == "ⲏ") & (df_diff["output"] == "ⲟ"))
+            ((df_diff["norm"] == "ⲟ") & (df_diff["var"] == "ⲏ"))
+            | ((df_diff["norm"] == "ⲏ") & (df_diff["var"] == "ⲟ"))
         )
     ) & ~(
         (df_diff["context_left"] == "#")
         & (
-            ((df_diff["input"] == "ϩ") & df_diff["output"].isin({"ⲫ", "ⲑ"}))
-            | ((df_diff["input"] == "∅") & (df_diff["output"].isin({"ⲑ", "ⲧⲟⲥ"})))
+            ((df_diff["norm"] == "ϩ") & df_diff["var"].isin({"ⲫ", "ⲑ"}))
+            | ((df_diff["norm"] == "∅") & (df_diff["var"].isin({"ⲑ", "ⲧⲟⲥ"})))
         )
     ) & ~(
-        ((df_diff["input"] == "ⲩ") & (df_diff["output"] == "ⲓ") & (df_diff["greek_lemma"] == "ⲉⲗⲁⲭⲩⲥ"))
-        | ((df_diff["input"] == "ⲟⲥ") & (df_diff["output"] == "∅") & (df_diff["greek_lemma"] == "ⲓⲟⲩⲇⲁⲓⲟⲥ"))
-        | ((df_diff["input"] == "ⲥ") & (df_diff["output"] == "ⲑ") & (df_diff["greek_lemma"] == "ⲡⲣⲁⲥⲥⲱ"))
-        | ((df_diff["input"] == "ϩ") & (df_diff["output"] == "ⲧ") & (df_diff["greek_lemma"].isin({"ϩⲟⲩⲧⲟⲥ", "ϩⲟ", "ϩⲏ"})))
+        ((df_diff["norm"] == "ⲩ") & (df_diff["var"] == "ⲓ") & (df_diff["greek_lemma"] == "ⲉⲗⲁⲭⲩⲥ"))
+        | ((df_diff["norm"] == "ⲟⲥ") & (df_diff["var"] == "∅") & (df_diff["greek_lemma"] == "ⲓⲟⲩⲇⲁⲓⲟⲥ"))
+        | ((df_diff["norm"] == "ⲥ") & (df_diff["var"] == "ⲑ") & (df_diff["greek_lemma"] == "ⲡⲣⲁⲥⲥⲱ"))
+        | ((df_diff["norm"] == "ϩ") & (df_diff["var"] == "ⲧ") & (df_diff["greek_lemma"].isin({"ϩⲟⲩⲧⲟⲥ", "ϩⲟ", "ϩⲏ"})))
     )]
 
     # remove adverbial endings
     df_diff = df_diff[~(
         (df_diff["context_right"] == "ⲥ")
-        & (df_diff["input"].isin({"ⲟ", "ⲏ"}) & (df_diff["output"] == "ⲱ"))
+        & (df_diff["norm"].isin({"ⲟ", "ⲏ"}) & (df_diff["var"] == "ⲱ"))
     )]
 
     blacklist = {
@@ -407,7 +404,8 @@ if __name__ == "__main__":
 
     # remove common abbreviations
     df_diff = df_diff[~(
-        (df_diff["output"] == "∅") & df_diff["greek_lemma"].isin(blacklist)
+        (df_diff["var"] == "∅") & df_diff["greek_lemma"].isin(blacklist)
     )]
 
-    df_diff.to_csv('deviations-occurrences.csv')
+    df.to_csv('attestations.csv')
+    df_diff.to_csv('deviations.csv')
