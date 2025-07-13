@@ -331,6 +331,8 @@ if __name__ == "__main__":
     df["greek_lemma_original"] = df["greek_lemma"]
     df["greek_lemma"] = df["greek_lemma_original"].apply(transliterate)
 
+    df["accuracy"] = df.apply(lambda row: SequenceMatcher(None, row["greek_lemma"], row["orthography_clean"]).ratio(), axis=1)
+
     df_diff = df.apply(
         lambda row: list(get_required_edits_improved(row["greek_lemma"], row["orthography_clean"])),
         axis=1
