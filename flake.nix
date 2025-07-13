@@ -12,7 +12,7 @@
       hash = "sha256-ycR59YV/9GHLy58PD2kveY+F1bnARiqTCswIN3NmjVI=";
     };
 
-    system = "x86_64-darwin";
+    system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
     lib = nixpkgs.lib;
     zip-font = name: arguments: let
