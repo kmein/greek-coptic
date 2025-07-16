@@ -107,6 +107,34 @@ def fix_CV_or_VC(edit):
                 })
                 context_left += "".join(input_cv)
             return edits
+        elif (input_booleans == (True,) and output_booleans == (True, False)) or (input_booleans == (False,) and output_booleans == (False, True)):
+            # insertion to the right
+            print("insertion right", input_cv_groups, output_cv_groups)
+            return [{
+                "norm": input_cv_groups[0],
+                "var": output_cv_groups[0],
+                "context_left": remove_null(edit["context_left"]),
+                "context_right": remove_null(edit["context_right"])
+            }, {
+                "norm": "∅",
+                "var": output_cv_groups[1],
+                "context_left": remove_null(edit["context_left"] + input_cv_groups[0]),
+                "context_right": remove_null(edit["context_right"])
+            }]
+        elif (input_booleans == (True,) and output_booleans == (False, True)) or (input_booleans == (False,) and output_booleans == (True, False)):
+            # insertion to the left
+            print("insertion left", input_cv_groups, output_cv_groups)
+            return [{
+                "norm": "∅",
+                "var": output_cv_groups[0],
+                "context_left": remove_null(edit["context_left"]),
+                "context_right": remove_null(input_cv_groups[0] + edit["context_right"])
+            }, {
+                "norm": input_cv_groups[0],
+                "var": output_cv_groups[1],
+                "context_left": remove_null(edit["context_left"]),
+                "context_right": remove_null(edit["context_right"])
+            }]
         else:
             return [edit]
     except ValueError:
@@ -274,8 +302,7 @@ def flatmap(func, *iterable):
     return itertools.chain.from_iterable(map(func, *iterable))
 
 def get_required_edits_improved(x, y):
-    return flatmap(fix_insert_h,
-        flatmap(fix_CV_or_VC,
+    return flatmap(fix_CV_or_VC,
             flatmap(fix_degemination,
                 flatmap(fix_gemination,
                     map(unprotect_edit,
@@ -287,9 +314,9 @@ def get_required_edits_improved(x, y):
                 )
             )
         )
-    )
 
-if __name__ == "__main__":
+
+def main():
     df = pd.read_csv(os.getenv("ATTESTATIONS_CSV") or "ddglc-attestations.csv") \
         .set_index("id") \
         .drop(columns=["dialect"]) \
@@ -356,14 +383,13 @@ if __name__ == "__main__":
 
     # remove nominal morphology
     df_diff = df_diff[~(
-        (df_diff["context_right"] == "#")
+        (df_diff["context_right"].isin({"#", "ⲥ","ⲛ"}))
         & (
             (df_diff["norm"].isin({"ⲥ", "ⲛ"}) & df_diff["var"].isin({"ⲛ", "ⲩ"}) & df_diff["context_left"].str.endswith("ⲟ"))
-            | ((df_diff["norm"] == "ⲟⲥ") & (df_diff["var"].isin({"ⲏ", "ⲁ", "ⲱⲛ", "ⲱ", "ⲉ", "ⲟⲩ"})))
-            | ((df_diff["norm"] == "ⲟⲛ") & (df_diff["var"] == "ⲁ"))
-            | ((df_diff["norm"] == "ⲩⲥ") & (df_diff["var"] == "ⲏ"))
+            | ((df_diff["norm"] == "ⲟ") & (df_diff["var"].isin({"ⲏ", "ⲁ", "ⲱ", "ⲟⲓ", "ⲉ", "ⲟⲩ"})))
+            | ((df_diff["norm"] == "ⲩ") & (df_diff["var"] == "ⲏ"))
             | ((df_diff["norm"] == "ⲥ") & (df_diff["var"] == "ⲛ"))
-            | ((df_diff["norm"] == "ⲛ") & (df_diff["var"] == "ⲥ"))
+            | ((df_diff["norm"].isin({"ⲛ","∅", "ⲥ"})) & (df_diff["var"].isin({"ⲥ", "ⲛ", "∅"})))
             | ((df_diff["norm"] == "ⲏ") & (df_diff["var"] == "ⲟⲟⲩⲉ"))
         )
     ) & ~(
@@ -411,3 +437,6 @@ if __name__ == "__main__":
 
     df.to_csv('attestations.csv')
     df_diff.to_csv('deviations.csv')
+
+if __name__ == "__main__":
+    main()
