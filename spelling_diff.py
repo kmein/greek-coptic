@@ -36,6 +36,9 @@ greek_to_coptic = {
   'ϗ': 'ⳤ',
   '\u0314': 'ϩ',
   '\u0345': 'ⲓ',
+  '\u0301': '´',
+  '\u0342': '´',
+  '\u0300': '´',
 }
 
 consonants = set("ⲡ ⲧ ⲕ ⲃ ⲇ ⲅ ⲫ ⲑ ⲭ ϩ ⲥ ϣ ϥ ϫ ϭ ⲗ ⲣ ⳉ ϧ ⲛ ⲙ ⲍ ⲝ ⲯ".split())
@@ -57,14 +60,16 @@ def unify_date(row):
 
 def transliterate(greek):
     normalized = unicodedata.normalize("NFD", greek)
-    clean_spiritus_asper = lambda x: re.sub(r"^([ⲣⲁⲉⲏⲓⲟⲱⲩ]+)ϩ", r'ϩ\1', x)
-    return clean_spiritus_asper(
-        "".join(
-            greek_to_coptic[character.lower()]
-            for character in normalized
-            if character.lower() in greek_to_coptic
-        )
+
+    transliterated = "".join(
+        greek_to_coptic[character.lower()]
+        for character in normalized
+        if character.lower() in greek_to_coptic
     )
+
+    cleaned = re.sub(r"([ⲣⲁⲉⲏⲓⲟⲱⲩ]+)ϩ", r'ϩ\1', transliterated)
+    stress_capitalized = re.sub(r"([ⲁⲉⲏⲓⲟⲱⲩ]+)´", lambda pat: pat.group(1).upper(), cleaned)
+    return stress_capitalized#.replace("´", "")
 
 def get_required_edits(a, b):
     for operation, a_start, a_end, b_start, b_end in SequenceMatcher(
@@ -80,7 +85,14 @@ def get_required_edits(a, b):
         context_right = a[a_end:]
         if len(context_right) == 0: context_right = "#"
         if operation == "equal": continue
-        yield {"operation": operation, "norm": the_input, "var": the_output, "context_left": context_left, "context_right": context_right}
+        yield {
+            "operation": operation,
+            "norm": the_input.lower(),
+            "var": the_output,
+            "stressed": the_input.isupper(),
+            "context_left": context_left,
+            "context_right": context_right
+        }
 
 remove_null = lambda x: x.replace("∅", "") if len(x) > 1 else x
 
@@ -103,7 +115,8 @@ def fix_CV_or_VC(edit):
                     "norm": "".join(input_cv),
                     "var": "".join(output_cv),
                     "context_left": remove_null(edit["context_left"] + context_left),
-                    "context_right": remove_null(context_right[position:] + edit["context_right"])
+                    "context_right": remove_null(context_right[position:] + edit["context_right"]),
+                    "stressed": edit["stressed"],
                 })
                 context_left += "".join(input_cv)
             return edits
@@ -114,12 +127,14 @@ def fix_CV_or_VC(edit):
                 "norm": input_cv_groups[0],
                 "var": output_cv_groups[0],
                 "context_left": remove_null(edit["context_left"]),
-                "context_right": remove_null(edit["context_right"])
+                "context_right": remove_null(edit["context_right"]),
+                "stressed": edit["stressed"],
             }, {
                 "norm": "∅",
                 "var": output_cv_groups[1],
                 "context_left": remove_null(edit["context_left"] + input_cv_groups[0]),
-                "context_right": remove_null(edit["context_right"])
+                "context_right": remove_null(edit["context_right"]),
+                "stressed": edit["stressed"],
             }]
         elif (input_booleans == (True,) and output_booleans == (False, True)) or (input_booleans == (False,) and output_booleans == (True, False)):
             # insertion to the left
@@ -128,34 +143,18 @@ def fix_CV_or_VC(edit):
                 "norm": "∅",
                 "var": output_cv_groups[0],
                 "context_left": remove_null(edit["context_left"]),
-                "context_right": remove_null(input_cv_groups[0] + edit["context_right"])
+                "context_right": remove_null(input_cv_groups[0] + edit["context_right"]),
+                "stressed": edit["stressed"],
             }, {
                 "norm": input_cv_groups[0],
                 "var": output_cv_groups[1],
                 "context_left": remove_null(edit["context_left"]),
-                "context_right": remove_null(edit["context_right"])
+                "context_right": remove_null(edit["context_right"]),
+                "stressed": edit["stressed"],
             }]
         else:
             return [edit]
     except ValueError:
-        return [edit]
-
-def fix_insert_h(edit):
-    input_booleans, _ = unzip(group_cv(edit["norm"]))
-    output_booleans, _ = unzip(group_cv(edit["var"]))
-    if edit["context_left"] == "#" and len(output_booleans) > len(input_booleans) and edit["var"].startswith("ϩ"):
-        return [{
-            "norm": edit["norm"],
-            "var": edit["var"].removeprefix("ϩ"),
-            "context_left": edit["context_left"],
-            "context_right": edit["context_right"]
-        }, {
-            "norm": "∅",
-            "var": "ϩ",
-            "context_left": edit["context_left"],
-            "context_right": edit["norm"] + edit["context_right"]
-        }]
-    else:
         return [edit]
 
 def fix_degemination(edit):
@@ -170,7 +169,8 @@ def fix_degemination(edit):
                 "norm": geminate * 2,
                 "var": geminate,
                 "context_left": edit["context_left"].removesuffix(geminate),
-                "context_right": edit["context_right"]
+                "context_right": edit["context_right"],
+                "stressed": edit["stressed"],
             }]
         elif edit["context_right"].startswith(edit["norm"]):
             geminate = edit["norm"]
@@ -178,7 +178,8 @@ def fix_degemination(edit):
                 "norm": geminate * 2,
                 "var": geminate,
                 "context_left": edit["context_left"],
-                "context_right": edit["context_right"].removeprefix(geminate)
+                "context_right": edit["context_right"].removeprefix(geminate),
+                "stressed": edit["stressed"],
             }]
         else:
             return [edit]
@@ -188,12 +189,14 @@ def fix_degemination(edit):
             "norm": edit["norm"].removeprefix(geminate),
             "var": edit["var"],
             "context_left": edit["context_left"] + geminate,
-            "context_right": edit["context_right"]
+            "context_right": edit["context_right"],
+                "stressed": edit["stressed"],
         }, {
             "norm": geminate * 2,
             "var": geminate,
             "context_left": edit["context_left"].removesuffix(geminate),
             "context_right": edit["norm"].removeprefix(geminate)+ edit["context_right"],
+            "stressed": edit["stressed"],
         }]
     elif edit["context_right"].startswith(edit["norm"][-1]):
         geminate = edit["norm"][-1]
@@ -201,12 +204,14 @@ def fix_degemination(edit):
             "norm": edit["norm"].removesuffix(geminate),
             "var": edit["var"],
             "context_left": edit["context_left"],
-            "context_right": geminate + edit["context_right"]
+            "context_right": geminate + edit["context_right"],
+            "stressed": edit["stressed"],
         }, {
             "norm": geminate * 2,
             "var": geminate,
             "context_left": edit["norm"].removesuffix(geminate),
             "context_right": edit["context_right"].removeprefix(geminate),
+            "stressed": edit["stressed"],
         }]
     else:
         return [edit]
@@ -223,7 +228,8 @@ def fix_gemination(edit):
                 "norm": geminate,
                 "var": geminate * 2,
                 "context_left": edit["context_left"].removesuffix(geminate),
-                "context_right": edit["context_right"]
+                "context_right": edit["context_right"],
+                "stressed": edit["stressed"],
             }]
         elif edit["context_right"].startswith(edit["var"]):
             geminate = edit["var"]
@@ -231,7 +237,8 @@ def fix_gemination(edit):
                 "norm": geminate,
                 "var": geminate * 2,
                 "context_left": edit["context_left"],
-                "context_right": edit["context_right"].removeprefix(geminate)
+                "context_right": edit["context_right"].removeprefix(geminate),
+                "stressed": edit["stressed"],
             }]
         else:
             return [edit]
@@ -241,12 +248,14 @@ def fix_gemination(edit):
             "norm": edit["norm"],
             "var": edit["var"].removeprefix(geminate),
             "context_left": edit["context_left"],
-            "context_right": edit["context_right"]
+            "context_right": edit["context_right"],
+            "stressed": edit["stressed"],
         }, {
             "norm": geminate,
             "var": geminate * 2,
             "context_left": edit["context_left"].removesuffix(geminate),
             "context_right": edit["norm"]+edit["context_right"],
+            "stressed": edit["stressed"],
         }]
     elif edit["context_right"].startswith(edit["var"][-1]):
         geminate = edit["var"][-1]
@@ -254,28 +263,41 @@ def fix_gemination(edit):
             "norm": edit["norm"],
             "var": edit["var"].removesuffix(geminate),
             "context_left": edit["context_left"],
-            "context_right": edit["context_right"]
+            "context_right": edit["context_right"],
+            "stressed": edit["stressed"],
         }, {
             "norm": geminate,
             "var": geminate * 2,
             "context_left": edit["norm"],
-            "context_right": edit["context_right"].removeprefix(geminate)
+            "context_right": edit["context_right"].removeprefix(geminate),
+            "stressed": edit["stressed"],
         }]
     else:
         return [edit]
 
 protected_digraphs = {
     "ⲁⲓ": "ä",
+    "ⲀⲒ": "Ä",
     "ⲉⲓ": "ë",
+    "ⲈⲒ": "Ë",
     "ⲏⲓ": "ḧ",
+    "ⲎⲒ": "Ḧ",
     "ⲟⲓ": "ö",
+    "ⲞⲒ": "Ö",
     "ⲩⲓ": "ü",
+    "ⲨⲒ": "Ü",
     "ⲱⲓ": "ẅ",
+    "ⲰⲒ": "Ẅ",
     "ⲁⲩ": "â",
+    "ⲀⲨ": "Â",
     "ⲉⲩ": "ê",
+    "ⲈⲨ": "Ê",
     "ⲟⲩ": "ô",
+    "ⲞⲨ": "Ô",
     "ⲏⲩ": "ĥ",
+    "ⲎⲨ": "Ĥ",
     "ⲱⲩ": "ŵ",
+    "ⲰⲨ": "Ŵ",
 }
 
 def protect_digraphs(string):
@@ -295,7 +317,8 @@ def unprotect_edit(edit):
         "norm": unprotect_digraphs(edit["norm"]),
         "var": unprotect_digraphs(edit["var"]),
         "context_left": unprotect_digraphs(edit["context_left"]),
-        "context_right": unprotect_digraphs(edit["context_right"])
+        "context_right": unprotect_digraphs(edit["context_right"]),
+        "stressed": edit["stressed"],
     }
 
 def flatmap(func, *iterable):
@@ -358,7 +381,7 @@ def main():
     df["greek_lemma_original"] = df["greek_lemma"]
     df["greek_lemma"] = df["greek_lemma_original"].apply(transliterate)
 
-    df["accuracy"] = df.apply(lambda row: SequenceMatcher(None, row["greek_lemma"], row["orthography_clean"]).ratio(), axis=1)
+    df["accuracy"] = df.apply(lambda row: SequenceMatcher(None, row["greek_lemma"].lower(), row["orthography_clean"]).ratio(), axis=1)
 
     df_diff = df.apply(
         lambda row: list(get_required_edits_improved(row["greek_lemma"], row["orthography_clean"])),
@@ -417,6 +440,10 @@ def main():
         & (df_diff["norm"].isin({"ⲟ", "ⲏ"}) & (df_diff["var"] == "ⲱ"))
     )]
 
+    # remove stress marks
+    df_diff["greek_lemma"] = df_diff["greek_lemma"].str.lower()
+    df["greek_lemma"] = df["greek_lemma"].str.lower()
+
     blacklist = {
         ""
         "ⲡⲛⲉⲩⲙⲁ",
@@ -434,6 +461,9 @@ def main():
     df_diff = df_diff[~(
         (df_diff["var"] == "∅") & df_diff["greek_lemma"].isin(blacklist)
     )]
+
+    # remove stress mark related no-op edits
+    df_diff = df_diff[df_diff["var"] != df_diff["norm"]]
 
     df.to_csv('attestations.csv')
     df_diff.to_csv('deviations.csv')
